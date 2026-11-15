@@ -30,6 +30,40 @@ pipeline {
                 '''
             }
         }
+	        stage('Publish to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-credentials',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASSWORD'
+                )]) {
+                    script {
+                        try {
+                            writeFile file: 'nexus-settings.xml', text: '''
+<settings>
+    <servers>
+        <server>
+            <id>nexus-releases</id>
+            <username>${env.NEXUS_USER}</username>
+            <password>${env.NEXUS_PASSWORD}</password>
+        </server>
+        <server>
+            <id>nexus-snapshots</id>
+            <username>${env.NEXUS_USER}</username>
+            <password>${env.NEXUS_PASSWORD}</password>
+        </server>
+    </servers>
+</settings>
+'''
+                            sh 'sh ./mvnw -B deploy -DskipTests -s nexus-settings.xml'
+                        } finally {
+                            sh 'rm -f nexus-settings.xml'
+                        }
+                    }
+                }
+            }
+        }
+
 
         stage('Archive Artifact') {
             steps {
